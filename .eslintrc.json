@@ -1,0 +1,12 @@
+{
+  "extends": "standard-with-typescript",
+  "parserOptions": {
+    "project": "./tsconfig.json"
+  },
+  "rules": {
+    "comma-dangle": ["error", "always-multiline"],
+    "no-void": ["off", { "allowAsStatement": true }],
+    "@typescript-eslint/explicit-function-return-type": "off",
+    "@typescript-eslint/no-floating-promises": ["warn", { "ignoreVoid": true }]
+  }
+}
