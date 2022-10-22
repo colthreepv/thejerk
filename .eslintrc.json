@@ -10,6 +10,7 @@
     "comma-dangle": ["error", "always-multiline"],
     "no-void": ["off", { "allowAsStatement": true }],
     "@typescript-eslint/explicit-function-return-type": "off",
-    "@typescript-eslint/no-floating-promises": ["warn", { "ignoreVoid": true }]
+    "@typescript-eslint/no-floating-promises": ["warn", { "ignoreVoid": true }],
+    "@typescript-eslint/no-non-null-assertion": "off"
   }
 }
