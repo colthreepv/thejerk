@@ -1,4 +1,11 @@
-import { getCurrentFundingRate, getMarkPrice, getNextFunding, getSymbolLeverage, getSymbols, getTicker } from './bitget'
+import {
+  getCurrentFundingRate,
+  getMarkPrice,
+  getNextFunding,
+  getSymbolLeverage,
+  getSymbols,
+  getTicker,
+} from './bitget.mjs'
 
 export const randomExperiment = async () => {
   const allSymbols = await getSymbols()

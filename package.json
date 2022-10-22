@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "license": "MIT",
+  "type": "module",
   "packageManager": "yarn@3.2.4",
   "devDependencies": {
     "@tsconfig/node16": "^1.0.3",

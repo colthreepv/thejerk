@@ -1,8 +1,8 @@
 import got from 'got'
 
-import { bitgetConfig } from './config'
-import { fundingtoApr } from './math.util'
-import getSigner from './util.bitget'
+import { bitgetConfig } from './config.mjs'
+import { fundingtoApr } from './math.util.mjs'
+import getSigner from './util.bitget.mjs'
 
 interface GenericBitGetResponse<T = unknown> {
   code: string // '00000'
@@ -205,24 +205,53 @@ export const setLeverage = async (symbol: string, leverage: number, marginCoin: 
   return response.body
 }
 
-export const placeOrder = async (symbol: string, side: 'buy' | 'sell', price: string, quantity: string) => {
+type BitGetOrderSide = 'open_long' | 'open_short' | 'close_long' | 'close_short'
+type BitGetTypeInForce = 'normal' | 'post_only' | 'fok' | 'ioc'
+
+/**
+ * Note on prices
+ * The price and quantity of the order need to meet pricePlace and priceEndStep volumePlace, those fields
+ * could be found from the response of Market -> Get All Symbols
+ *
+ * for example:
+ * pricePlace of BTCUSDT_UMCBL is 1 and priceEndStep is 5, then the order price needs to satisfy a multiple of 0.5,
+ * for example, the price should be 23455.0, 23455.5, 23446.0
+ *
+ * pricePlace of ETHUSDT_UMCBL is 2 and priceEndStep is 1, then the order price needs to satisfy a multiple of 0.01,
+ * for example, the price should be 1325.00, 1325.01, 1325.02
+ */
+export const placeOrder = async (
+  symbol: string,
+  side: BitGetOrderSide,
+  price: string | number,
+  size: string | number,
+  type: BitGetTypeInForce = 'normal',
+) => {
   const { apiKey, secretKey, passPhrase } = bitgetConfig
   const signer = getSigner(apiKey, secretKey, passPhrase)
-  const url = '/api/spot/v1/trade/orders'
+  const url = '/api/mix/v1/order/placeOrder'
+
+  const marginCoin = 'USDT'
+  const orderType = 'limit'
+
+  // TODO: generate idempotent id based on parameters
   const body = {
-    symbol,
-    side,
-    orderType: 'limit',
-    force: 'normal',
-    price,
-    quantity,
+    symbol, // Symbol Id
+    marginCoin, // Margin currency
+    size: String(size), // Order quantity
+    price: String(price), // Order price
+    side, // Order direction
+    orderType, // Order type
+    timeInForceValue: type, // Time in force
+    // clientOid | Unique client order ID, The idempotent is promised but only within 24 hours
   }
 
-  const response = await got(`${BITGET_API_BASE}/api/spot/v1/trade/orders`, {
+  const response = await got(`${BITGET_API_BASE}/api/mix/v1/order/placeOrder`, {
     method: 'POST',
     headers: signer('POST', url, body),
     json: body,
     responseType: 'json',
+    throwHttpErrors: false,
   })
 
   return response.body

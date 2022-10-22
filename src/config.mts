@@ -1,3 +1,5 @@
+import { config as dotEnvConfig } from 'dotenv'
+
 const criticalException = (reason: string) => (context: any) => {
   if (context instanceof Error) console.error('Critical Exception occurred:', context.message)
   else console.error('Critical Exception occurred:', reason)
@@ -13,7 +15,7 @@ export const ENV =
   process.env.NODE_ENV === 'production' ? 'production' : ((process.env.NODE_ENV ?? 'development') as APP_ENV)
 // uso di file .env **solo** in sviluppo
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-if (ENV !== 'production') require('dotenv').config({ path: `.env.${ENV}` })
+if (ENV !== 'production') dotEnvConfig({ path: `.env.${ENV}` })
 
 const confBuilder = <K extends string>(vars: readonly K[]) => {
   return vars.reduce((result, v) => {
