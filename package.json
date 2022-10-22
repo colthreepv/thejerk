@@ -24,6 +24,7 @@
     "start": "tsx watch src/index.ts"
   },
   "dependencies": {
-    "got": "^12.5.2"
+    "got": "^12.5.2",
+    "p-queue": "^7.3.0"
   }
 }
