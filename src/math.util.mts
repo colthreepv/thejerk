@@ -1,3 +1,5 @@
+import { FundingRateSide } from './interfaces.common.mjs'
+
 const safePercentage = (numerator: number, denominator: number) => {
   return denominator === 0 ? 0 : roundFloatTo2Decimals(numerator / denominator)
 }
@@ -9,6 +11,6 @@ const roundFloatTo2Decimals = (value: number) => {
 
 export const fundingtoApr = (funding: number) => {
   const apr = funding * 3 * 365 * 100
-  const receivingSide = apr > 0 ? 'short' : 'long'
+  const receivingSide = apr > 0 ? FundingRateSide.Short : FundingRateSide.Long
   return { apr: Math.abs(roundFloatTo2Decimals(apr)), receivingSide }
 }
