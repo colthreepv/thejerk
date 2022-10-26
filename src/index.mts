@@ -3,6 +3,7 @@ import { BitGetFutures } from './bitget.mjs'
 import { ByBitFutures } from './bybit.mjs'
 import { addFundingOccurrence } from './funding.util.mjs'
 import { ResultingFundingRate } from './interfaces.common.mjs'
+import { roundFloatTo2Decimals } from './math.util.mjs'
 
 const BitGetMostProfitableSymbol = async () => {
   const bitget = new BitGetFutures()
@@ -81,18 +82,32 @@ const main = async () => {
   const bitget = new BitGetFutures()
   const bybit = new ByBitFutures()
 
-  const result = await mostProfitableSymbol()
-  const firstResult = result[0]
+  // const result = await mostProfitableSymbol()
+  // const firstResult = result[0]
 
-  const bitgetPrice = await bitget.getMarkPrice(firstResult.baseCurrency)
-  const bitGetFunding = await bitget.getNextFunding(firstResult.baseCurrency)
-  const bybitFunding = await bybit.getSymbol(firstResult.baseCurrency)
+  // const bitgetPrice = await bitget.getMarkPrice(firstResult.baseCurrency)
+  // const bitGetFunding = await bitget.getNextFunding(firstResult.baseCurrency)
+  const bybitFunding = await bybit.getSymbol('MATIC')
+
+  // console.log({
+  //   bestResult: firstResult,
+  //   bitgetPrice,
+  //   bybitPrice: bybitFunding.mark_price,
+  //   bitget: bitGetFunding,
+  //   bybit: bybitFunding,
+  // })
+
+  const orderPrice = (Number(bybitFunding.mark_price) * 0.9).toFixed(4)
+  const overallValue = 10 // usdt
+  const size = roundFloatTo2Decimals(overallValue / Number(orderPrice))
+
+  // const bybitSide: ByBitOrderSide =
+  //   firstResult.allMatches.find((m) => m.platform === 'bybit')?.receivingSide === FundingRateSide.Long ? 'Buy' : 'Sell'
+
+  const bybitOrder = await bybit.placeOrder('MATIC', 'Buy', orderPrice, size)
 
   console.log({
-    bitgetPrice,
-    bybitPrice: bybitFunding.mark_price,
-    bitget: bitGetFunding,
-    bybit: bybitFunding,
+    bybitOrder,
   })
 }
 

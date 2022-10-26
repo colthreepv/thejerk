@@ -1,7 +1,9 @@
 import got from 'got'
 import PQueue from 'p-queue'
+import { bybitConfig } from './config.mjs'
 import { CommonFundingRate } from './interfaces.common.mjs'
 import { fundingtoApr } from './math.util.mjs'
+import { getOrderLinkId, getRequestHeaders, getBybitPayload } from './util.bybit.mjs'
 
 const BYBIT_API_BASE = 'https://api.bybit.com'
 
@@ -12,6 +14,14 @@ interface GenericByBitResponse<T = unknown> {
   ext_code: string // ''
   ext_info: string // ''
   time_now: string // '1666541887.67488'
+}
+
+interface ByBitV3Response<T = unknown> {
+  retCode: number // 0
+  retMsg: string // 'OK'
+  result: T
+  retExtInfo: unknown // {}
+  time: number // 1666743393174
 }
 
 interface ByBitSymbol {
@@ -71,6 +81,13 @@ interface ByBitLatestSymbol {
   open_value: string // ''
 }
 
+interface ByBitOrderCreated {
+  orderId: string // 'd5e8b5c9-2e5b-452b-b0f9-b7063ebce0d1'
+  orderLinkId: string // '2ed8ad3860b5b28e60038db6564172bd'
+}
+
+export type ByBitOrderSide = 'Buy' | 'Sell'
+
 export class ByBitFutures {
   queue = new PQueue({ intervalCap: 50, interval: 1000 })
 
@@ -118,5 +135,44 @@ export class ByBitFutures {
     }
 
     return returnValue
+  }
+
+  async getServerTime() {
+    const response = await this.queue.add(() =>
+      got(`${BYBIT_API_BASE}/v3/public/time`).json<ByBitV3Response<{ timeSecond: string; timeNano: string }>>(),
+    )
+    if (response.retCode !== 0) throw new Error(response.retMsg)
+
+    return response.result
+  }
+
+  async placeOrder(rawSymbol: string, side: ByBitOrderSide, price: string | number, size: string | number) {
+    const { apiKey, secretKey } = bybitConfig
+    const symbol = this.bybitSymbol(rawSymbol)
+    const orderLinkId = getOrderLinkId()
+
+    const payload = {
+      symbol,
+      orderType: 'Limit',
+      side,
+      orderLinkId,
+      positionIdx: side === 'Buy' ? 1 : 2,
+      qty: String(size),
+      price: String(price),
+    }
+
+    const serverTime = await this.getServerTime()
+
+    const response = await this.queue.add(() =>
+      got(`${BYBIT_API_BASE}/contract/v3/private/order/create`, {
+        method: 'POST',
+        headers: getRequestHeaders(apiKey, secretKey, payload, serverTime.timeSecond),
+        json: payload,
+        responseType: 'json',
+        throwHttpErrors: false,
+      }).json<ByBitV3Response<ByBitOrderCreated>>(),
+    )
+
+    return response.result
   }
 }

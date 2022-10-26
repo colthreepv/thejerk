@@ -44,4 +44,15 @@ const bitgetConfig: BitGetConfig = {
   passPhrase: BITGET_PASSPHRASE,
 }
 
-export { bitgetConfig }
+// bybit
+interface BybitConfig {
+  apiKey: string
+  secretKey: string
+}
+const { BYBIT_APIKEY, BYBIT_SECRETKEY } = confBuilder(['BYBIT_APIKEY', 'BYBIT_SECRETKEY'])
+const bybitConfig: BybitConfig = {
+  apiKey: BYBIT_APIKEY,
+  secretKey: BYBIT_SECRETKEY,
+}
+
+export { bitgetConfig, bybitConfig }
