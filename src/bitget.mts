@@ -1,6 +1,11 @@
 import got from 'got'
 import PQueue from 'p-queue'
-import { BitGetOrderSide, BitGetPlaceOrderResponse, BitGetTypeInForce } from './bitget/bitget.private.interfaces.mjs'
+import {
+  BitGetOrder,
+  BitGetOrderSide,
+  BitGetPlaceOrderResponse,
+  BitGetTypeInForce,
+} from './bitget/bitget.private.interfaces.mjs'
 import {
   BitGetCurrentFundingRate,
   BitGetHistoricFundingRate,
@@ -241,6 +246,28 @@ export class BitGetFutures {
         responseType: 'json',
         throwHttpErrors: false,
       }).json<GenericBitGetResponse<BitGetPlaceOrderResponse>>(),
+    )
+
+    return response.data
+  }
+
+  async getOrder(rawSymbol: string, { orderId, clientOid }: { orderId?: string; clientOid?: string } = {}) {
+    const symbol = this.bitgetSymbol(rawSymbol)
+    const { apiKey, secretKey, passPhrase } = bitgetConfig
+    const signer = getSigner(apiKey, secretKey, passPhrase)
+    const url = '/api/mix/v1/order/detail'
+
+    const searchParams: any = { symbol }
+    if (orderId) searchParams.orderId = orderId
+    if (clientOid) searchParams.clientOid = clientOid
+
+    const response = await this.queue.add(() =>
+      got(`${BITGET_API_BASE}/api/mix/v1/order/detail`, {
+        searchParams,
+        headers: signer('GET', url, searchParams),
+        responseType: 'json',
+        throwHttpErrors: false,
+      }).json<GenericBitGetResponse<BitGetOrder>>(),
     )
 
     return response.data

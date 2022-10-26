@@ -78,19 +78,29 @@ export class ByBitFutures {
     return response.result
   }
 
-  async placeOrder(rawSymbol: string, side: ByBitOrderSide, price: string | number, size: string | number) {
+  async placeOrder(
+    rawSymbol: string,
+    side: ByBitOrderSide,
+    price: string | number,
+    size: string | number,
+    reduceOnly = false,
+    forcedPosition?: ByBitOrderSide,
+  ) {
     const { apiKey, secretKey } = bybitConfig
     const symbol = this.bybitSymbol(rawSymbol)
     const orderLinkId = getOrderLinkId()
+
+    const positionIdx = forcedPosition ? (forcedPosition === 'Buy' ? 1 : 2) : side === 'Buy' ? 1 : 2
 
     const payload = {
       symbol,
       orderType: 'Limit',
       side,
       orderLinkId,
-      positionIdx: side === 'Buy' ? 1 : 2,
+      positionIdx,
       qty: String(size),
       price: String(price),
+      reduceOnly,
     }
 
     const serverTime = await this.getServerTime()
@@ -104,7 +114,7 @@ export class ByBitFutures {
       }).json<ByBitV3Response<ByBitOrderCreated>>(),
     )
 
-    return response.result
+    return response
   }
 
   // not really useful
