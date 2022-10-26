@@ -1,89 +1,18 @@
 import got from 'got'
 import PQueue from 'p-queue'
+import { ByBitOrderCreated, ByBitOrders, ByBitOrderSide, ByBitPositions } from './bybit/bybit.private.interfaces.mjs'
+import {
+  ByBitLatestSymbol,
+  ByBitSymbol,
+  ByBitV3Response,
+  GenericByBitResponse,
+} from './bybit/bybit.public.interfaces.mjs'
 import { bybitConfig } from './config.mjs'
 import { CommonFundingRate } from './interfaces.common.mjs'
 import { fundingtoApr } from './math.util.mjs'
-import { getOrderLinkId, getRequestHeaders, getBybitPayload } from './util.bybit.mjs'
+import { getOrderLinkId, getRequestHeaders } from './util.bybit.mjs'
 
 const BYBIT_API_BASE = 'https://api.bybit.com'
-
-interface GenericByBitResponse<T = unknown> {
-  ret_code: number // 0
-  ret_msg: string // 'OK'
-  result: T
-  ext_code: string // ''
-  ext_info: string // ''
-  time_now: string // '1666541887.67488'
-}
-
-interface ByBitV3Response<T = unknown> {
-  retCode: number // 0
-  retMsg: string // 'OK'
-  result: T
-  retExtInfo: unknown // {}
-  time: number // 1666743393174
-}
-
-interface ByBitSymbol {
-  name: string // '10000NFTUSDT',
-  alias: string // '10000NFTUSDT',
-  status: string // 'Trading',
-  base_currency: string // '10000NFT',
-  quote_currency: string // 'USDT',
-  price_scale: number // 6, Price scale (the number of decimal places to which a price can be submitted, although the final price may be rounded to conform to the tick_size)
-  taker_fee: string // '0.0006',
-  maker_fee: string // '0.0001',
-  funding_interval: number // 480,
-  leverage_filter: {
-    min_leverage: number // 1,
-    max_leverage: number // 12,
-    leverage_step: string // '0.01'
-  }
-  price_filter: {
-    min_price: string // '0.000005',
-    max_price: string // '9.999990',
-    tick_size: string // '0.000005'
-  }
-  lot_size_filter: {
-    max_trading_qty: number // 250000,
-    min_trading_qty: number // 10,
-    qty_step: number // 10,
-    post_only_max_trading_qty: string // '1250000'
-  }
-}
-
-interface ByBitLatestSymbol {
-  list: Array<{
-    symbol: string // 'BTCUSDT'
-    bidPrice: string // '19255'
-    askPrice: string // '19255.5'
-    lastPrice: string // '19255.50'
-    lastTickDirection: string // 'ZeroPlusTick'
-    prevPrice24h: string // '18634.50'
-    price24hPcnt: string // '0.033325'
-    highPrice24h: string // '19675.00'
-    lowPrice24h: string // '18610.00'
-    prevPrice1h: string // '19278.00'
-    markPrice: string // '19255.00'
-    indexPrice: string // '19260.68'
-    openInterest: string // '48069.549'
-    turnover24h: string // '4686694853.047006'
-    volume24h: string // '243730.252'
-    fundingRate: string // '0.0001'
-    nextFundingTime: string // '1663689600000'
-    predictedDeliveryPrice: string // ''
-    basisRate: string // ''
-    deliveryFeeRate: string // ''
-    deliveryTime: string // '0'
-  }>
-}
-
-interface ByBitOrderCreated {
-  orderId: string // 'd5e8b5c9-2e5b-452b-b0f9-b7063ebce0d1'
-  orderLinkId: string // '2ed8ad3860b5b28e60038db6564172bd'
-}
-
-export type ByBitOrderSide = 'Buy' | 'Sell'
 
 export class ByBitFutures {
   queue = new PQueue({ intervalCap: 50, interval: 1000 })
@@ -165,15 +94,59 @@ export class ByBitFutures {
     }
 
     const serverTime = await this.getServerTime()
-
     const response = await this.queue.add(() =>
       got(`${BYBIT_API_BASE}/contract/v3/private/order/create`, {
         method: 'POST',
-        headers: getRequestHeaders(apiKey, secretKey, payload, serverTime.timeSecond),
+        headers: getRequestHeaders(apiKey, secretKey, JSON.stringify(payload), serverTime.timeSecond),
         json: payload,
         responseType: 'json',
         throwHttpErrors: false,
       }).json<ByBitV3Response<ByBitOrderCreated>>(),
+    )
+
+    return response.result
+  }
+
+  // not really useful
+  async getPositions(rawSymbol?: string) {
+    const symbol = rawSymbol ? this.bybitSymbol(rawSymbol) : undefined
+    const { apiKey, secretKey } = bybitConfig
+
+    const searchParams: any = {}
+    if (symbol) searchParams['symbol'] = symbol
+    const urlParams = new URLSearchParams(searchParams)
+
+    const serverTime = await this.getServerTime()
+    const response = await this.queue.add(() =>
+      got(`${BYBIT_API_BASE}/contract/v3/private/position/list`, {
+        searchParams,
+        headers: getRequestHeaders(apiKey, secretKey, urlParams.toString(), serverTime.timeSecond),
+        responseType: 'json',
+        throwHttpErrors: false,
+      }).json<ByBitV3Response<ByBitPositions>>(),
+    )
+
+    return response.result
+  }
+
+  async getOrders(rawSymbol?: string, { orderId, orderLinkId }: { orderId?: string; orderLinkId?: string } = {}) {
+    const symbol = rawSymbol ? this.bybitSymbol(rawSymbol) : undefined
+    const { apiKey, secretKey } = bybitConfig
+
+    const searchParams: any = {}
+    if (symbol) searchParams['symbol'] = symbol
+    if (orderId) searchParams['orderId'] = orderId
+    if (orderLinkId) searchParams['orderLinkId'] = orderLinkId
+    const urlParams = new URLSearchParams(searchParams)
+
+    const serverTime = await this.getServerTime()
+    const response = await this.queue.add(() =>
+      got(`${BYBIT_API_BASE}/contract/v3/private/order/list`, {
+        searchParams,
+        headers: getRequestHeaders(apiKey, secretKey, urlParams.toString(), serverTime.timeSecond),
+        responseType: 'json',
+        throwHttpErrors: false,
+      }).json<ByBitV3Response<ByBitOrders>>(),
     )
 
     return response.result

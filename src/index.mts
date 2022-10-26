@@ -78,7 +78,7 @@ const mostProfitableSymbol = async () => {
   return result
 }
 
-const main = async () => {
+const createFundingOrder = async () => {
   const bitget = new BitGetFutures()
   const bybit = new ByBitFutures()
 
@@ -120,6 +120,13 @@ const main = async () => {
     bybitOrder,
     bitgetOrder,
   })
+}
+
+const main = async () => {
+  const bybit = new ByBitFutures()
+  // const positions = await bybit.getPositions('APT')
+  const orders = await bybit.getOrders('APT', { orderLinkId: 'c285fb0177d0cbe40226c7c8d972c22b' })
+  console.log({ orders: orders.list })
 }
 
 void main()
