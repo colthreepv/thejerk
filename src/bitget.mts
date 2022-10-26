@@ -272,4 +272,12 @@ export class BitGetFutures {
 
     return response.data
   }
+
+  async closeOrder(rawSymbol: string, orderId: string, price: string) {
+    const symbol = this.bitgetSymbol(rawSymbol)
+    const order = await this.getOrder(symbol, { orderId })
+
+    const bitgetClosingSide: BitGetOrderSide = order.side === 'open_long' ? 'close_long' : 'close_short'
+    return await this.placeOrder(symbol, bitgetClosingSide, price, order.size)
+  }
 }

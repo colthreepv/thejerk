@@ -117,6 +117,23 @@ export class ByBitFutures {
     return response
   }
 
+  async closeOrder(rawSymbol: string, orderLinkId: string, price: string) {
+    const symbol = this.bybitSymbol(rawSymbol)
+    const orders = await this.getOrders(symbol, { orderLinkId })
+    if (orders.list.length === 0) throw new Error(`No order with orderLinkId ${orderLinkId} found`)
+
+    const bybitOrder = orders.list[0]
+    const byBitClosingSide: ByBitOrderSide = bybitOrder.side === 'Buy' ? 'Sell' : 'Buy'
+    return await this.placeOrder(
+      symbol,
+      byBitClosingSide,
+      price,
+      bybitOrder.qty,
+      true,
+      bybitOrder.side as ByBitOrderSide,
+    )
+  }
+
   // not really useful
   async getPositions(rawSymbol?: string) {
     const symbol = rawSymbol ? this.bybitSymbol(rawSymbol) : undefined

@@ -124,26 +124,19 @@ export const createFundingOrder = async () => {
   })
 }
 
-export const closeFundingOrder = async (bybitOrderLinkId: string, bitgetOrderId: string) => {
+export const closeFundingOrder = async (rawSymbol: string, bybitOrderLinkId: string, bitgetOrderId: string) => {
   const bybit = new ByBitFutures()
   const bitget = new BitGetFutures()
-  const orders = await bybit.getOrders('APT', { orderLinkId: bybitOrderLinkId })
-  const bybitOrder = orders.list[0]
-
-  const bitgetOrder = await bitget.getOrder('APT', { orderId: bitgetOrderId })
-  console.log({ bybitOrder, bitgetOrder })
 
   // create price
-  const bitgetPrice = await bitget.getSimplePrice('APT')
-  const bybitPrice = await bybit.getSimplePrice('APT')
+  const bitgetPrice = await bitget.getSimplePrice(rawSymbol)
+  const bybitPrice = await bybit.getSimplePrice(rawSymbol)
   const orderPrice = medianPrice(bitgetPrice, bybitPrice)
   console.log({ orderPrice })
 
   // create close orders
-  const byBitSide: ByBitOrderSide = bybitOrder.side === 'Buy' ? 'Sell' : 'Buy'
-  const byBitNextOrder = await bybit.placeOrder('APT', byBitSide, orderPrice, bybitOrder.qty)
-  const bitgetSide: BitGetOrderSide = bitgetOrder.side === 'open_long' ? 'close_long' : 'close_short'
-  const bitgetNextOrder = await bitget.placeOrder('APT', bitgetSide, orderPrice, bitgetOrder.size)
+  const byBitOrder = await bybit.closeOrder(rawSymbol, bybitOrderLinkId, orderPrice)
+  const bitgetOrder = await bitget.closeOrder(rawSymbol, bitgetOrderId, orderPrice)
 
-  console.log({ byBitNextOrder, bitgetNextOrder })
+  console.log({ byBitOrder, bitgetOrder })
 }
