@@ -1,9 +1,9 @@
-import { BitGetFutures } from './bitget.mjs'
+import { BitGetFutures, BitGetOrderSide } from './bitget.mjs'
 
-import { ByBitFutures } from './bybit.mjs'
+import { ByBitFutures, ByBitOrderSide } from './bybit.mjs'
 import { addFundingOccurrence } from './funding.util.mjs'
-import { ResultingFundingRate } from './interfaces.common.mjs'
-import { roundFloatTo2Decimals } from './math.util.mjs'
+import { FundingRateSide, ResultingFundingRate } from './interfaces.common.mjs'
+import { medianPrice, roundFloatTo2Decimals } from './math.util.mjs'
 
 const BitGetMostProfitableSymbol = async () => {
   const bitget = new BitGetFutures()
@@ -82,32 +82,43 @@ const main = async () => {
   const bitget = new BitGetFutures()
   const bybit = new ByBitFutures()
 
-  // const result = await mostProfitableSymbol()
-  // const firstResult = result[0]
+  const result = await mostProfitableSymbol()
+  const firstResult = result[0]
 
-  // const bitgetPrice = await bitget.getMarkPrice(firstResult.baseCurrency)
+  const bitgetPrice = await bitget.getSimplePrice(firstResult.baseCurrency)
+  const bybitPrice = await bybit.getSimplePrice(firstResult.baseCurrency)
+  // TODO: make simpleNextFunding on both classes
   // const bitGetFunding = await bitget.getNextFunding(firstResult.baseCurrency)
-  const bybitFunding = await bybit.getSymbol('MATIC')
+  // const bybitFunding = await bybit.getSymbol(firstResult.baseCurrency)
 
-  // console.log({
-  //   bestResult: firstResult,
-  //   bitgetPrice,
-  //   bybitPrice: bybitFunding.mark_price,
-  //   bitget: bitGetFunding,
-  //   bybit: bybitFunding,
-  // })
+  console.log({
+    bestResult: firstResult,
+    bitgetPrice,
+    bybitPrice,
+  })
 
-  const orderPrice = (Number(bybitFunding.mark_price) * 0.9).toFixed(4)
-  const overallValue = 10 // usdt
+  // bybit
+  const orderPrice = medianPrice(bitgetPrice, bybitPrice)
+  const overallValue = 100 // usdt
   const size = roundFloatTo2Decimals(overallValue / Number(orderPrice))
 
-  // const bybitSide: ByBitOrderSide =
-  //   firstResult.allMatches.find((m) => m.platform === 'bybit')?.receivingSide === FundingRateSide.Long ? 'Buy' : 'Sell'
+  const bybitSide: ByBitOrderSide =
+    firstResult.allMatches.find((m) => m.platform === 'bybit')?.receivingSide === FundingRateSide.Long ? 'Buy' : 'Sell'
 
-  const bybitOrder = await bybit.placeOrder('MATIC', 'Buy', orderPrice, size)
+  const bitgetSide: BitGetOrderSide =
+    firstResult.allMatches.find((m) => m.platform === 'bitget')?.receivingSide === FundingRateSide.Long
+      ? 'open_long'
+      : 'open_short'
+
+  console.log({
+    orderPrice,
+  })
+  const bybitOrder = await bybit.placeOrder(firstResult.baseCurrency, bybitSide, orderPrice, size)
+  const bitgetOrder = await bitget.placeOrder(firstResult.baseCurrency, bitgetSide, orderPrice, size)
 
   console.log({
     bybitOrder,
+    bitgetOrder,
   })
 }
 

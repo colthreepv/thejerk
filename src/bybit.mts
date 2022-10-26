@@ -53,32 +53,29 @@ interface ByBitSymbol {
 }
 
 interface ByBitLatestSymbol {
-  symbol: string // 'KAVAUSDT',
-  bid_price: string // '1.434',
-  ask_price: string // '1.435',
-  last_price: string // '1.435',
-  last_tick_direction: string // 'MinusTick',
-  prev_price_24h: string // '1.414',
-  price_24h_pcnt: string // '0.014851',
-  high_price_24h: string // '1.453',
-  low_price_24h: string // '1.411',
-  prev_price_1h: string // '1.431',
-  mark_price: string // '1.435',
-  index_price: string // '1.436',
-  open_interest: number // 1295907.5,
-  countdown_hour: number // 0,
-  turnover_24h: string // '1877230.0364',
-  volume_24h: number // 1309223.7,
-  funding_rate: string // '-0.000566',
-  predicted_funding_rate: string // '',
-  next_funding_time: string // '2022-10-24T00:00:00Z',
-  predicted_delivery_price: string // '',
-  total_turnover: string // '',
-  total_volume: number // 0,
-  delivery_fee_rate: string // '',
-  delivery_time: string // '',
-  price_1h_pcnt: string // '',
-  open_value: string // ''
+  list: Array<{
+    symbol: string // 'BTCUSDT'
+    bidPrice: string // '19255'
+    askPrice: string // '19255.5'
+    lastPrice: string // '19255.50'
+    lastTickDirection: string // 'ZeroPlusTick'
+    prevPrice24h: string // '18634.50'
+    price24hPcnt: string // '0.033325'
+    highPrice24h: string // '19675.00'
+    lowPrice24h: string // '18610.00'
+    prevPrice1h: string // '19278.00'
+    markPrice: string // '19255.00'
+    indexPrice: string // '19260.68'
+    openInterest: string // '48069.549'
+    turnover24h: string // '4686694853.047006'
+    volume24h: string // '243730.252'
+    fundingRate: string // '0.0001'
+    nextFundingTime: string // '1663689600000'
+    predictedDeliveryPrice: string // ''
+    basisRate: string // ''
+    deliveryFeeRate: string // ''
+    deliveryTime: string // '0'
+  }>
 }
 
 interface ByBitOrderCreated {
@@ -111,21 +108,21 @@ export class ByBitFutures {
   async getSymbol(rawSymbol: string) {
     const symbol = this.bybitSymbol(rawSymbol)
     const response = await this.queue.add(() =>
-      got(`${BYBIT_API_BASE}/v2/public/tickers`, {
-        searchParams: { symbol },
-      }).json<GenericByBitResponse<ByBitLatestSymbol[]>>(),
+      got(`${BYBIT_API_BASE}/derivatives/v3/public/tickers`, {
+        searchParams: { symbol, category: 'linear' },
+      }).json<ByBitV3Response<ByBitLatestSymbol>>(),
     )
-    if (response.ret_code !== 0) throw new Error(response.ret_msg)
-    if (response.result.length === 0) throw new Error(`Symbol ${symbol} not found`)
-    if (response.result.length > 1) throw new Error(`multiple occurences for Symbol ${symbol} found`)
+    if (response.retCode !== 0) throw new Error(response.retMsg)
+    if (response.result.list.length === 0) throw new Error(`Symbol ${symbol} not found`)
+    if (response.result.list.length > 1) throw new Error(`multiple occurences for Symbol ${symbol} found`)
 
-    return response.result[0]
+    return response.result.list[0]
   }
 
   async getCurrentFundingRate(rawSymbol: string, base_currency?: string) {
     const symbol = this.bybitSymbol(rawSymbol)
     const symbolData = await this.getSymbol(symbol)
-    const { apr, receivingSide } = fundingtoApr(Number(symbolData.funding_rate))
+    const { apr, receivingSide } = fundingtoApr(Number(symbolData.fundingRate))
 
     const returnValue: CommonFundingRate = {
       symbol: symbolData.symbol,
@@ -135,6 +132,12 @@ export class ByBitFutures {
     }
 
     return returnValue
+  }
+
+  async getSimplePrice(rawSymbol: string): Promise<string> {
+    const data = await this.getSymbol(rawSymbol)
+
+    return String(data.markPrice)
   }
 
   async getServerTime() {

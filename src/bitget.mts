@@ -75,7 +75,7 @@ interface BitGetSymbolLeverage {
   maxLeverage: string // max leverage
 }
 
-type BitGetOrderSide = 'open_long' | 'open_short' | 'close_long' | 'close_short'
+export type BitGetOrderSide = 'open_long' | 'open_short' | 'close_long' | 'close_short'
 type BitGetTypeInForce = 'normal' | 'post_only' | 'fok' | 'ioc'
 
 const BITGET_API_BASE = 'https://api.bitget.com'
@@ -225,6 +225,12 @@ export class BitGetFutures {
     }
 
     return returnValue
+  }
+
+  async getSimplePrice(rawSymbol: string): Promise<string> {
+    const data = await this.getMarkPrice(rawSymbol)
+
+    return String(data.markPrice)
   }
 
   async setLeverage(rawSymbol: string, leverage: number, marginCoin: string = 'USDT') {

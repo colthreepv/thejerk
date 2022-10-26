@@ -14,3 +14,13 @@ export const fundingtoApr = (funding: number) => {
   const receivingSide = apr > 0 ? FundingRateSide.Short : FundingRateSide.Long
   return { apr: Math.abs(roundFloatTo2Decimals(apr)), receivingSide }
 }
+
+export const medianPrice = (price0: string, price1: string): string => {
+  const price0decimals = price0.split('.')[1].length
+  const price1decimals = price1.split('.')[1].length
+  const decimals = Math.min(price0decimals, price1decimals)
+
+  const average = (Number(price0) + Number(price1)) / 2
+
+  return average.toFixed(decimals)
+}
