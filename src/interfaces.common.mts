@@ -13,8 +13,12 @@ export enum FundingRateSide {
 export interface ContractOccurrence extends CommonFundingRate {
   platform: string
 }
+export interface ContractOccurrenceWithVolume extends ContractOccurrence {
+  volume24h: string
+  price: string
+}
 
-export interface ResultingFundingRate {
+export interface ComputingFundingRate {
   baseCurrency: string
   resultingApr: number
   shortApr?: number
@@ -22,4 +26,11 @@ export interface ResultingFundingRate {
   longMatch?: ContractOccurrence
   shortMatch?: ContractOccurrence
   allMatches: ContractOccurrence[]
+}
+
+export interface ResultingFundingRate extends ComputingFundingRate {
+  priceSpread: string
+  longMatch?: ContractOccurrenceWithVolume
+  shortMatch?: ContractOccurrenceWithVolume
+  allMatches: ContractOccurrenceWithVolume[]
 }

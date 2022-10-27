@@ -4,8 +4,13 @@ import { BitGetOrderSide } from './bitget/bitget.private.interfaces.mjs'
 import { ByBitFutures } from './bybit.mjs'
 import { ByBitOrderSide } from './bybit/bybit.private.interfaces.mjs'
 import { addFundingOccurrence } from './funding.util.mjs'
-import { FundingRateSide, ResultingFundingRate } from './interfaces.common.mjs'
-import { medianPrice, roundFloatTo2Decimals } from './math.util.mjs'
+import {
+  ComputingFundingRate,
+  ContractOccurrenceWithVolume,
+  FundingRateSide,
+  ResultingFundingRate,
+} from './interfaces.common.mjs'
+import { medianPrice, priceSpread, roundFloatTo2Decimals } from './math.util.mjs'
 
 export const BitGetMostProfitableSymbol = async () => {
   const bitget = new BitGetFutures()
@@ -33,13 +38,15 @@ export const ByBitMostProfitableSymbol = async () => {
   return sortedFundingRates
 }
 
-export const mostProfitableSymbol = async () => {
+export const mostProfitableSymbol = async (): Promise<ResultingFundingRate[]> => {
   const [bybitProfitable, bitgetProfitable] = await Promise.all([
     ByBitMostProfitableSymbol(),
     BitGetMostProfitableSymbol(),
   ])
 
-  const fundingMap = new Map<string, ResultingFundingRate>()
+  const cexMap = { bybit: new ByBitFutures(), bitget: new BitGetFutures() } as any
+
+  const fundingMap = new Map<string, ComputingFundingRate>()
   bybitProfitable.forEach((f) => {
     const isPresent = fundingMap.has(f.baseCurrency)
     if (isPresent) {
@@ -72,10 +79,38 @@ export const mostProfitableSymbol = async () => {
     }
   })
 
-  const result = Array.from(fundingMap.values())
+  const fundingRates = Array.from(fundingMap.values())
     .filter((value) => value.longApr !== undefined && value.shortApr !== undefined)
     .sort((a, b) => b.resultingApr - a.resultingApr)
     .filter((_, idx) => idx < 10)
+
+  const result = await Promise.all(
+    fundingRates.map(async (solution) => {
+      const longCex = cexMap[solution.longMatch!.platform]
+      const shortCex = cexMap[solution.shortMatch!.platform]
+
+      const shortVolume24h: string = await shortCex.getVolume(solution.shortMatch!.baseCurrency)
+      const shortPrice: string = await shortCex.getSimplePrice(solution.shortMatch!.baseCurrency)
+      const longVolume24h: string = await longCex.getVolume(solution.longMatch!.baseCurrency)
+      const longPrice: string = await longCex.getSimplePrice(solution.longMatch!.baseCurrency)
+
+      const shortMatch: ContractOccurrenceWithVolume = Object.assign({}, solution.shortMatch!, {
+        volume24h: shortVolume24h,
+        price: shortPrice,
+      })
+      const longMatch: ContractOccurrenceWithVolume = Object.assign({}, solution.longMatch, {
+        volume24h: longVolume24h,
+        price: longPrice,
+      })
+
+      return Object.assign({}, solution, {
+        priceSpread: priceSpread(longPrice, shortPrice),
+        shortMatch,
+        longMatch,
+        allMatches: [shortMatch, longMatch],
+      }) as ResultingFundingRate
+    }),
+  )
 
   return result
 }

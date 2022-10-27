@@ -24,3 +24,15 @@ export const medianPrice = (price0: string, price1: string): string => {
 
   return average.toFixed(decimals)
 }
+
+export const priceSpread = (price0Str: string, price1Str: string): string => {
+  const price0 = Number(price0Str)
+  const price1 = Number(price1Str)
+  const spread = Math.abs(price0 - price1)
+  const median = medianPrice(price0Str, price1Str)
+
+  // expressed in basis points
+  const spreadBasis = (spread / Number(median)) * 10000
+
+  return spreadBasis.toFixed(2)
+}

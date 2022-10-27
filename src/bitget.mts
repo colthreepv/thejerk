@@ -21,6 +21,7 @@ import { bitgetConfig } from './config.mjs'
 import { CommonFundingRate } from './interfaces.common.mjs'
 import { fundingtoApr } from './math.util.mjs'
 import getSigner from './util.bitget.mjs'
+import { tokenBlackList } from './util.tokens.mjs'
 
 const BITGET_API_BASE = 'https://api.bitget.com'
 
@@ -45,6 +46,7 @@ export class BitGetFutures {
     const filteredSymbols = response.data
       .filter((symbol) => !symbol.baseCoin.includes('1000'))
       .filter((symbol) => symbol.quoteCoin === 'USDT')
+      .filter((symbol) => tokenBlackList.has(symbol.baseCoin) === false)
 
     return filteredSymbols
   }
@@ -175,6 +177,12 @@ export class BitGetFutures {
     const data = await this.getMarkPrice(rawSymbol)
 
     return String(data.markPrice)
+  }
+
+  async getVolume(rawSymbol: string): Promise<string> {
+    const data = await this.getTicker(rawSymbol)
+
+    return data.usdtVolume
   }
 
   async setLeverage(rawSymbol: string, leverage: number, marginCoin: string = 'USDT') {

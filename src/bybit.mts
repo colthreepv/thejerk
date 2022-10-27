@@ -11,6 +11,7 @@ import { bybitConfig } from './config.mjs'
 import { CommonFundingRate } from './interfaces.common.mjs'
 import { fundingtoApr } from './math.util.mjs'
 import { getOrderLinkId, getRequestHeaders } from './util.bybit.mjs'
+import { tokenBlackList } from './util.tokens.mjs'
 
 const BYBIT_API_BASE = 'https://api.bybit.com'
 
@@ -31,6 +32,8 @@ export class ByBitFutures {
     const filteredSymbols = response.result
       .filter((symbol) => !symbol.base_currency.includes('1000'))
       .filter((symbol) => symbol.quote_currency === 'USDT')
+      .filter((symbol) => tokenBlackList.has(symbol.base_currency) === false)
+
     return filteredSymbols
   }
 
@@ -76,6 +79,13 @@ export class ByBitFutures {
     if (response.retCode !== 0) throw new Error(response.retMsg)
 
     return response.result
+  }
+
+  async getVolume(rawSymbol: string) {
+    const symbol = this.bybitSymbol(rawSymbol)
+    const data = await this.getSymbol(symbol)
+
+    return data.turnover24h
   }
 
   async placeOrder(
