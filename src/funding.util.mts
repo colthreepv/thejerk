@@ -1,4 +1,9 @@
-import { CommonFundingRate, ComputingFundingRate, ContractOccurrence, FundingRateSide } from './interfaces.common.mjs'
+import {
+  CommonFundingRate,
+  ComputingFundingRate,
+  FundingRateWithPlatform,
+  FundingRateSide,
+} from './interfaces.common.mjs'
 
 export const addFundingOccurrence = (
   result: ComputingFundingRate,
@@ -6,7 +11,7 @@ export const addFundingOccurrence = (
   platform: string,
 ): ComputingFundingRate => {
   const nextResult = Object.assign({}, result)
-  const occurrence: ContractOccurrence = Object.assign({}, fundingRate, { platform })
+  const occurrence: FundingRateWithPlatform = Object.assign({}, fundingRate, { platform })
 
   if (occurrence.receivingSide === FundingRateSide.Long) {
     if (result.longApr === undefined || result.longApr < occurrence.apr) {

@@ -6,11 +6,11 @@ import { ByBitOrderSide } from './bybit/bybit.private.interfaces.mjs'
 import { addFundingOccurrence } from './funding.util.mjs'
 import {
   ComputingFundingRate,
-  ContractOccurrenceWithVolume,
+  ContractOccurrence,
   FundingRateSide,
   ResultingFundingRate,
 } from './interfaces.common.mjs'
-import { medianPrice, priceSpread, roundFloatTo2Decimals } from './math.util.mjs'
+import { medianPrice, priceSpread, priceSpread, roundFloatTo2Decimals } from './math.util.mjs'
 
 export const BitGetMostProfitableSymbol = async () => {
   const bitget = new BitGetFutures()
@@ -94,11 +94,11 @@ export const mostProfitableSymbol = async (): Promise<ResultingFundingRate[]> =>
       const longVolume24h: string = await longCex.getVolume(solution.longMatch!.baseCurrency)
       const longPrice: string = await longCex.getSimplePrice(solution.longMatch!.baseCurrency)
 
-      const shortMatch: ContractOccurrenceWithVolume = Object.assign({}, solution.shortMatch!, {
+      const shortMatch: ContractOccurrence = Object.assign({}, solution.shortMatch!, {
         volume24h: shortVolume24h,
         price: shortPrice,
       })
-      const longMatch: ContractOccurrenceWithVolume = Object.assign({}, solution.longMatch, {
+      const longMatch: ContractOccurrence = Object.assign({}, solution.longMatch, {
         volume24h: longVolume24h,
         price: longPrice,
       })
@@ -115,48 +115,44 @@ export const mostProfitableSymbol = async (): Promise<ResultingFundingRate[]> =>
   return result
 }
 
-export const createFundingOrder = async () => {
+export const createFundingOrder = async (
+  rawSymbol: string,
+  longMatch: ContractOccurrence,
+  shortMatch: ContractOccurrence,
+  value: number = 100,
+) => {
   const bitget = new BitGetFutures()
   const bybit = new ByBitFutures()
 
-  const result = await mostProfitableSymbol()
-  const firstResult = result[0]
-
-  const bitgetPrice = await bitget.getSimplePrice(firstResult.baseCurrency)
-  const bybitPrice = await bybit.getSimplePrice(firstResult.baseCurrency)
+  const bitgetPrice = await bitget.getSimplePrice(rawSymbol)
+  const bybitPrice = await bybit.getSimplePrice(rawSymbol)
   // TODO: make simpleNextFunding on both classes
   // const bitGetFunding = await bitget.getNextFunding(firstResult.baseCurrency)
   // const bybitFunding = await bybit.getSymbol(firstResult.baseCurrency)
 
-  console.log({
-    bestResult: firstResult,
-    bitgetPrice,
-    bybitPrice,
-  })
-
   // bybit
   const orderPrice = medianPrice(bitgetPrice, bybitPrice)
-  const overallValue = 100 // usdt
-  const size = roundFloatTo2Decimals(overallValue / Number(orderPrice))
+  const spread = priceSpread(bitgetPrice, bybitPrice)
+  const size = roundFloatTo2Decimals(value / Number(orderPrice))
 
-  const bybitSide: ByBitOrderSide =
-    firstResult.allMatches.find((m) => m.platform === 'bybit')?.receivingSide === FundingRateSide.Long ? 'Buy' : 'Sell'
+  const bybitMatch = longMatch.platform === 'bybit' ? longMatch : shortMatch
+  const bitgetMatch = longMatch.platform === 'bitget' ? longMatch : shortMatch
 
-  const bitgetSide: BitGetOrderSide =
-    firstResult.allMatches.find((m) => m.platform === 'bitget')?.receivingSide === FundingRateSide.Long
-      ? 'open_long'
-      : 'open_short'
+  const bybitSide: ByBitOrderSide = bybitMatch.receivingSide === FundingRateSide.Long ? 'Buy' : 'Sell'
+  const bitgetSide: BitGetOrderSide = bitgetMatch.receivingSide === FundingRateSide.Long ? 'open_long' : 'open_short'
 
   console.log({
     orderPrice,
+    spread,
   })
-  const bybitOrder = await bybit.placeOrder(firstResult.baseCurrency, bybitSide, orderPrice, size)
-  const bitgetOrder = await bitget.placeOrder(firstResult.baseCurrency, bitgetSide, orderPrice, size)
 
-  console.log({
-    bybitOrder,
-    bitgetOrder,
-  })
+  const bybitOrder = await bybit.placeOrder(rawSymbol, bybitSide, orderPrice, size)
+  const bitgetOrder = await bitget.placeOrder(rawSymbol, bitgetSide, orderPrice, size)
+
+  return {
+    bybit: bybitOrder,
+    bitget: bitgetOrder,
+  }
 }
 
 export const closeFundingOrder = async (rawSymbol: string, bybitOrderLinkId: string, bitgetOrderId: string) => {

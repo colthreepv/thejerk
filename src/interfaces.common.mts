@@ -10,10 +10,10 @@ export enum FundingRateSide {
   Short = 'short',
 }
 
-export interface ContractOccurrence extends CommonFundingRate {
+export interface FundingRateWithPlatform extends CommonFundingRate {
   platform: string
 }
-export interface ContractOccurrenceWithVolume extends ContractOccurrence {
+export interface ContractOccurrence extends FundingRateWithPlatform {
   volume24h: string
   price: string
 }
@@ -23,14 +23,14 @@ export interface ComputingFundingRate {
   resultingApr: number
   shortApr?: number
   longApr?: number
-  longMatch?: ContractOccurrence
-  shortMatch?: ContractOccurrence
-  allMatches: ContractOccurrence[]
+  longMatch?: FundingRateWithPlatform
+  shortMatch?: FundingRateWithPlatform
+  allMatches: FundingRateWithPlatform[]
 }
 
 export interface ResultingFundingRate extends ComputingFundingRate {
   priceSpread: string
-  longMatch?: ContractOccurrenceWithVolume
-  shortMatch?: ContractOccurrenceWithVolume
-  allMatches: ContractOccurrenceWithVolume[]
+  longMatch?: ContractOccurrence
+  shortMatch?: ContractOccurrence
+  allMatches: ContractOccurrence[]
 }
